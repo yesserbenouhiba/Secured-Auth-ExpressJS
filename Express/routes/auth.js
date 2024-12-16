@@ -6,13 +6,18 @@ const router = express.Router();
 
 // Register Route
 router.post("/register", async (req, res) => {
-  const { username, password, role } = req.body;
+  const { firstname, lastname, email, password, address, phoneNum, role, profilePic } = req.body;
 
   try {
     // Check if the user already exists
-    const existingUser = await User.findOne({ username });
+    const existingUser = await User.findOne({ email });
     if (existingUser) {
-      return res.status(400).json({ message: "Username already exists" });
+      return res.status(400).json({ message: "Email already exists" });
+    }
+
+    // Validate required fields
+    if (!firstname || !lastname || !email || !password || !address || !phoneNum) {
+      return res.status(400).json({ message: "All fields are required" });
     }
 
     // Hash the password
@@ -21,9 +26,14 @@ router.post("/register", async (req, res) => {
 
     // Create a new user
     const newUser = new User({
-      username,
+      firstname,
+      lastname,
+      email,
       password: hashedPassword,
+      address: address, // Note: Ensure consistency with schema spelling
+      phoneNum,
       role: role || "user", // Default role is 'user' if not provided
+      profilePic: profilePic || "" // Default to empty string if not provided
     });
 
     await newUser.save();
@@ -36,9 +46,9 @@ router.post("/register", async (req, res) => {
 });
 
 router.post("/login", async (req, res) => {
-  const { username, password } = req.body;
+  const { email, password } = req.body;
 
-  const user = await User.findOne({ username });
+  const user = await User.findOne({ email });
   if (!user) return res.status(404).json({ message: "User not found" });
 
   const isPasswordValid = await bcrypt.compare(password, user.password);
