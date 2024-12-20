@@ -5,23 +5,30 @@ var cookieParser = require("cookie-parser");
 var logger = require("morgan");
 const http = require("http");
 const mongoose = require("mongoose");
-const seedAdminUser = require('./utils/seedAdminUser');
+const seedAdminUser = require("./utils/seedAdminUser");
 require("dotenv").config();
+const cors = require("cors");
 
 // Routes
-const authRouter = require('./routes/auth');
-const protectedRouter = require('./routes/protected');
+const authRouter = require("./routes/auth");
+const protectedRouter = require("./routes/protected");
 
 var app = express();
 // Connect to MongoDB
 mongoose
   .connect(process.env.MONGO_URI)
   .then(() => {
-    console.log('Connected to MongoDB');
+    console.log("Connected to MongoDB");
     seedAdminUser(); // Seed the admin user
   })
-  .catch((err) => console.error('Error connecting to MongoDB:', err.message));
+  .catch((err) => console.error("Error connecting to MongoDB:", err.message));
 
+app.use(
+  cors({
+    origin: "http://localhost:3000", // Your frontend's origin
+    credentials: true, // Allow cookies
+  })
+);
 app.use(logger("dev"));
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
@@ -29,8 +36,8 @@ app.use(cookieParser());
 //Socket side
 app.use(express.static(path.join(__dirname, "public")));
 
-app.use('/auth', authRouter);
-app.use('/protected', protectedRouter);
+app.use("/auth", authRouter);
+app.use("/protected", protectedRouter);
 
 // catch 404 and forward to error handler
 app.use(function (req, res, next) {
