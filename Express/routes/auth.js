@@ -3,10 +3,20 @@ const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const User = require("../models/user");
 const router = express.Router();
+const authenticateToken = require("../middleware/authenticateToken");
 
 // Register Route
 router.post("/register", async (req, res) => {
-  const { firstname, lastname, email, password, address, phoneNum, role, profilePic } = req.body;
+  const {
+    firstname,
+    lastname,
+    email,
+    password,
+    address,
+    phoneNum,
+    role,
+    profilePic,
+  } = req.body;
 
   try {
     // Check if the user already exists
@@ -16,7 +26,14 @@ router.post("/register", async (req, res) => {
     }
 
     // Validate required fields
-    if (!firstname || !lastname || !email || !password || !address || !phoneNum) {
+    if (
+      !firstname ||
+      !lastname ||
+      !email ||
+      !password ||
+      !address ||
+      !phoneNum
+    ) {
       return res.status(400).json({ message: "All fields are required" });
     }
 
@@ -33,7 +50,7 @@ router.post("/register", async (req, res) => {
       address: address, // Note: Ensure consistency with schema spelling
       phoneNum,
       role: role || "user", // Default role is 'user' if not provided
-      profilePic: profilePic || "" // Default to empty string if not provided
+      profilePic: profilePic || "", // Default to empty string if not provided
     });
 
     await newUser.save();
@@ -65,25 +82,49 @@ router.post("/login", async (req, res) => {
 
   // Set the token as a cookie
   res.cookie("token", token, {
-    httpOnly: true,       // Ensures cookie is not accessible via JavaScript
+    httpOnly: true, // Ensures cookie is not accessible via JavaScript
     secure: false, // Set to true if using HTTPS in production
-    maxAge: 3600000,      // Cookie expiration time (1 hour)
-    path: "/",            // Make cookie accessible to all routes
+    maxAge: 3600000, // Cookie expiration time (1 hour)
+    path: "/", // Make cookie accessible to all routes
   });
 
   res.json({ message: "Login successful" });
 });
 
-router.post('/logout', (req, res) => {
+router.post("/logout", (req, res) => {
   // Clear the token cookie by setting its max age to 0
   res.clearCookie("token", {
-    httpOnly: true,       // Same flag as when setting the cookie
-    secure: false,        // Set to false for local development
-    path: "/",            // Same path as when setting the cookie
+    httpOnly: true, // Same flag as when setting the cookie
+    secure: false, // Set to false for local development
+    path: "/", // Same path as when setting the cookie
   });
 
   // Respond with a success message
-  res.json({ message: 'Successfully logged out' });
+  res.json({ message: "Successfully logged out" });
+});
+
+// Get user profile route (returns user data if authenticated)
+router.get("/profile", authenticateToken, async (req, res) => {
+  try {
+    // Fetch user data from the database based on the user ID in the decoded token
+    const user = await User.findById(req.user.id).select("-password"); // Exclude password
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    // Return the user's information
+    res.json({
+      id: user._id,
+      firstname: user.firstname,
+      lastname: user.lastname,
+      email: user.email,
+      address: user.address,
+      phoneNum: user.phoneNum,
+      role: user.role,
+      profilePic: user.profilePic,
+    });
+  } catch (error) {
+    console.error("Error fetching user profile:", error.message);
+    res.status(500).json({ message: "Internal server error" });
+  }
 });
 
 module.exports = router;
